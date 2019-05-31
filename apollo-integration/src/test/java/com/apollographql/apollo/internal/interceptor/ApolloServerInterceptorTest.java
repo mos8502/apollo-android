@@ -72,7 +72,7 @@ public class ApolloServerInterceptorTest {
     ApolloServerInterceptor interceptor = new ApolloServerInterceptor(serverUrl,
         new AssertHttpCallFactory(requestAssertPredicate), null, false,
         new ScalarTypeAdapters(Collections.<ScalarType, CustomTypeAdapter>emptyMap()),
-        new ApolloLogger(Optional.<Logger>absent()), false);
+        new ApolloLogger(Optional.<Logger>absent()), false, true);
 
     interceptor.httpPostCall(query, CacheHeaders.NONE, RequestHeaders.NONE, true);
   }
@@ -96,7 +96,7 @@ public class ApolloServerInterceptorTest {
         new AssertHttpCallFactory(requestAssertPredicate), null, false,
         new ScalarTypeAdapters(Collections.<ScalarType, CustomTypeAdapter>emptyMap()),
         new ApolloLogger(Optional.<Logger>absent()),
-        false);
+        false, true);
 
     interceptor.httpPostCall(query, CacheHeaders.NONE, RequestHeaders.NONE, true);
   }
@@ -104,7 +104,7 @@ public class ApolloServerInterceptorTest {
   @Test public void testCachedHttpCall() throws Exception {
     ScalarTypeAdapters scalarTypeAdapters =
         new ScalarTypeAdapters(Collections.<ScalarType, CustomTypeAdapter>emptyMap());
-    final String cacheKey = ApolloServerInterceptor.cacheKey(query, scalarTypeAdapters);
+    final String cacheKey = ApolloServerInterceptor.cacheKey(query, scalarTypeAdapters, true);
     Predicate<Request> requestAssertPredicate = new Predicate<Request>() {
       @Override public boolean apply(@Nullable Request request) {
         assertThat(request).isNotNull();
@@ -125,7 +125,7 @@ public class ApolloServerInterceptorTest {
     ApolloServerInterceptor interceptor = new ApolloServerInterceptor(serverUrl,
         new AssertHttpCallFactory(requestAssertPredicate),
         HttpCachePolicy.NETWORK_FIRST.expireAfter(10, TimeUnit.SECONDS), false,
-        scalarTypeAdapters, new ApolloLogger(Optional.<Logger>absent()), false);
+        scalarTypeAdapters, new ApolloLogger(Optional.<Logger>absent()), false, true);
 
     interceptor.httpPostCall(query, CacheHeaders.builder().addHeader(ApolloCacheHeaders.DO_NOT_STORE, "true").build(),
         RequestHeaders.NONE, true);
@@ -167,7 +167,7 @@ public class ApolloServerInterceptorTest {
     ApolloServerInterceptor interceptor = new ApolloServerInterceptor(serverUrl,
         new AssertHttpCallFactory(requestAssertPredicate), null, false,
         new ScalarTypeAdapters(Collections.<ScalarType, CustomTypeAdapter>emptyMap()),
-        new ApolloLogger(Optional.<Logger>absent()), false);
+        new ApolloLogger(Optional.<Logger>absent()), false, true);
 
     interceptor.httpPostCall(query, CacheHeaders.NONE, requestHeaders, true);
   }
@@ -195,7 +195,7 @@ public class ApolloServerInterceptorTest {
     ApolloServerInterceptor interceptor = new ApolloServerInterceptor(serverUrl,
         new AssertHttpCallFactory(requestAssertPredicate), null, false,
         new ScalarTypeAdapters(Collections.<ScalarType, CustomTypeAdapter>emptyMap()),
-        new ApolloLogger(Optional.<Logger>absent()), true);
+        new ApolloLogger(Optional.<Logger>absent()), true, true);
 
     interceptor.httpGetCall(query, CacheHeaders.NONE, RequestHeaders.NONE, true);
   }

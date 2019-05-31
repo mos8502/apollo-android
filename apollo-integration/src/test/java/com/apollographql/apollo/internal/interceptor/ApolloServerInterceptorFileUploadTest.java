@@ -163,7 +163,7 @@ public class ApolloServerInterceptorFileUploadTest {
         new AssertHttpCallFactory(requestAssertPredicate), null, false,
         new ScalarTypeAdapters(Collections.<ScalarType, CustomTypeAdapter>emptyMap()),
         new ApolloLogger(Optional.<Logger>absent()),
-        false);
+        false, true);
 
     interceptor.httpPostCall(mutationSingle, CacheHeaders.NONE, RequestHeaders.NONE, true);
   }
@@ -187,7 +187,7 @@ public class ApolloServerInterceptorFileUploadTest {
         new AssertHttpCallFactory(requestAssertPredicate), null, false,
         new ScalarTypeAdapters(Collections.<ScalarType, CustomTypeAdapter>emptyMap()),
         new ApolloLogger(Optional.<Logger>absent()),
-        false);
+        false, true);
 
     interceptor.httpPostCall(mutationTwice, CacheHeaders.NONE, RequestHeaders.NONE, true);
   }
@@ -211,7 +211,7 @@ public class ApolloServerInterceptorFileUploadTest {
         new AssertHttpCallFactory(requestAssertPredicate), null, false,
         new ScalarTypeAdapters(Collections.<ScalarType, CustomTypeAdapter>emptyMap()),
         new ApolloLogger(Optional.<Logger>absent()),
-        false);
+        false, true);
 
     interceptor.httpPostCall(mutationMultiple, CacheHeaders.NONE, RequestHeaders.NONE, true);
   }
@@ -232,7 +232,7 @@ public class ApolloServerInterceptorFileUploadTest {
         new AssertHttpCallFactory(requestAssertPredicate), null, false,
         new ScalarTypeAdapters(Collections.<ScalarType, CustomTypeAdapter>emptyMap()),
         new ApolloLogger(Optional.<Logger>absent()),
-        false);
+        false, true);
 
     interceptor.httpPostCall(mutationNested, CacheHeaders.NONE, RequestHeaders.NONE,true);
   }
@@ -272,7 +272,7 @@ public class ApolloServerInterceptorFileUploadTest {
         new AssertHttpCallFactory(requestAssertPredicate), null, false,
         new ScalarTypeAdapters(Collections.<ScalarType, CustomTypeAdapter>emptyMap()),
         new ApolloLogger(Optional.<Logger>absent()),
-        false);
+        false, true);
 
     interceptor.httpPostCall(mutationSingle, CacheHeaders.NONE, requestHeaders, true);
   }

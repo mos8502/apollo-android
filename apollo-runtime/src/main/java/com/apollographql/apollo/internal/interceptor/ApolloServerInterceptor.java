@@ -60,6 +60,7 @@ import static com.apollographql.apollo.api.internal.Utils.checkNotNull;
   final okhttp3.Call.Factory httpCallFactory;
   final Optional<HttpCachePolicy.Policy> cachePolicy;
   final boolean prefetch;
+  final boolean enableAutoPersistedQueries;
   final ApolloLogger logger;
   final ScalarTypeAdapters scalarTypeAdapters;
   final boolean useHttpGetMethodForQueries;
@@ -69,11 +70,12 @@ import static com.apollographql.apollo.api.internal.Utils.checkNotNull;
   public ApolloServerInterceptor(@NotNull HttpUrl serverUrl, @NotNull Call.Factory httpCallFactory,
       @Nullable HttpCachePolicy.Policy cachePolicy, boolean prefetch,
       @NotNull ScalarTypeAdapters scalarTypeAdapters, @NotNull ApolloLogger logger,
-      boolean useHttpGetMethodForQueries) {
+      boolean useHttpGetMethodForQueries, boolean enableAutoPersistedQueries) {
     this.serverUrl = checkNotNull(serverUrl, "serverUrl == null");
     this.httpCallFactory = checkNotNull(httpCallFactory, "httpCallFactory == null");
     this.cachePolicy = Optional.fromNullable(cachePolicy);
     this.prefetch = prefetch;
+    this.enableAutoPersistedQueries = enableAutoPersistedQueries;
     this.scalarTypeAdapters = checkNotNull(scalarTypeAdapters, "scalarTypeAdapters == null");
     this.logger = checkNotNull(logger, "logger == null");
     this.useHttpGetMethodForQueries = useHttpGetMethodForQueries;
@@ -132,7 +134,7 @@ import static com.apollographql.apollo.api.internal.Utils.checkNotNull;
       boolean writeQueryDocument) throws IOException {
     Request.Builder requestBuilder = new Request.Builder()
         .get()
-        .url(httpGetUrl(serverUrl, operation, scalarTypeAdapters, writeQueryDocument));
+        .url(httpGetUrl(serverUrl, operation, scalarTypeAdapters, writeQueryDocument, enableAutoPersistedQueries));
     decorateRequest(requestBuilder, operation, cacheHeaders, requestHeaders);
     return httpCallFactory.newCall(requestBuilder.build());
   }
@@ -140,7 +142,7 @@ import static com.apollographql.apollo.api.internal.Utils.checkNotNull;
   Call httpPostCall(Operation operation, CacheHeaders cacheHeaders, RequestHeaders requestHeaders,
       boolean writeQueryDocument) throws IOException {
     RequestBody requestBody = RequestBody.create(MEDIA_TYPE, httpPostRequestBody(operation, scalarTypeAdapters,
-        writeQueryDocument));
+        writeQueryDocument, enableAutoPersistedQueries));
 
     requestBody = transformToMultiPartIfUploadExists(requestBody, operation);
 
@@ -170,7 +172,7 @@ import static com.apollographql.apollo.api.internal.Utils.checkNotNull;
       boolean skipCacheHttpResponse = "true".equalsIgnoreCase(cacheHeaders.headerValue(
           ApolloCacheHeaders.DO_NOT_STORE));
 
-      String cacheKey = cacheKey(operation, scalarTypeAdapters);
+      String cacheKey = cacheKey(operation, scalarTypeAdapters, enableAutoPersistedQueries);
       requestBuilder
           .header(HttpCache.CACHE_KEY_HEADER, cacheKey)
           .header(HttpCache.CACHE_FETCH_STRATEGY_HEADER, cachePolicy.fetchStrategy.name())
@@ -181,12 +183,13 @@ import static com.apollographql.apollo.api.internal.Utils.checkNotNull;
     }
   }
 
-  static String cacheKey(Operation operation, ScalarTypeAdapters scalarTypeAdapters) throws IOException {
-    return httpPostRequestBody(operation, scalarTypeAdapters, true).md5().hex();
+  static String cacheKey(Operation operation, ScalarTypeAdapters scalarTypeAdapters,
+                         boolean persistedQueryEnabled) throws IOException {
+    return httpPostRequestBody(operation, scalarTypeAdapters, true, persistedQueryEnabled).md5().hex();
   }
 
   static ByteString httpPostRequestBody(Operation operation, ScalarTypeAdapters scalarTypeAdapters,
-      boolean writeQueryDocument) throws IOException {
+      boolean writeQueryDocument, boolean persistedQueryEnabled) throws IOException {
     Buffer buffer = new Buffer();
     JsonWriter jsonWriter = JsonWriter.of(buffer);
     jsonWriter.setSerializeNulls(true);
@@ -195,14 +198,16 @@ import static com.apollographql.apollo.api.internal.Utils.checkNotNull;
     jsonWriter.name("variables").beginObject();
     operation.variables().marshaller().marshal(new InputFieldJsonWriter(jsonWriter, scalarTypeAdapters));
     jsonWriter.endObject();
-    jsonWriter.name("extensions")
-        .beginObject()
-        .name("persistedQuery")
-        .beginObject()
-        .name("version").value(1)
-        .name("sha256Hash").value(operation.operationId())
-        .endObject()
-        .endObject();
+    if (persistedQueryEnabled) {
+      jsonWriter.name("extensions")
+              .beginObject()
+              .name("persistedQuery")
+              .beginObject()
+              .name("version").value(1)
+              .name("sha256Hash").value(operation.operationId())
+              .endObject()
+              .endObject();
+    }
     if (writeQueryDocument) {
       jsonWriter.name("query").value(operation.queryDocument().replaceAll("\\n", ""));
     }
@@ -212,7 +217,8 @@ import static com.apollographql.apollo.api.internal.Utils.checkNotNull;
   }
 
   static HttpUrl httpGetUrl(HttpUrl serverUrl, Operation operation,
-      ScalarTypeAdapters scalarTypeAdapters, boolean writeQueryDocument) throws IOException {
+      ScalarTypeAdapters scalarTypeAdapters, boolean writeQueryDocument,
+                            boolean persistedQueryEnabled) throws IOException {
     HttpUrl.Builder urlBuilder = serverUrl.newBuilder();
     if (writeQueryDocument) {
       urlBuilder.addQueryParameter("query", operation.queryDocument().replaceAll("\\n", ""));
@@ -221,7 +227,7 @@ import static com.apollographql.apollo.api.internal.Utils.checkNotNull;
       addVariablesUrlQueryParameter(urlBuilder, operation, scalarTypeAdapters);
     }
     urlBuilder.addQueryParameter("operationName", operation.name().name());
-    addExtensionsUrlQueryParameter(urlBuilder, operation);
+    addExtensionsUrlQueryParameter(urlBuilder, operation, persistedQueryEnabled);
     return urlBuilder.build();
   }
 
@@ -237,16 +243,19 @@ import static com.apollographql.apollo.api.internal.Utils.checkNotNull;
     urlBuilder.addQueryParameter("variables", buffer.readUtf8());
   }
 
-  static void addExtensionsUrlQueryParameter(HttpUrl.Builder urlBuilder, Operation operation) throws IOException {
+  static void addExtensionsUrlQueryParameter(HttpUrl.Builder urlBuilder, Operation operation,
+                                             boolean persistedQueryEnabled) throws IOException {
     Buffer buffer = new Buffer();
     JsonWriter jsonWriter = JsonWriter.of(buffer);
     jsonWriter.setSerializeNulls(true);
     jsonWriter.beginObject();
-    jsonWriter.name("persistedQuery")
-        .beginObject()
-        .name("version").value(1)
-        .name("sha256Hash").value(operation.operationId())
-        .endObject();
+    if (persistedQueryEnabled) {
+      jsonWriter.name("persistedQuery")
+              .beginObject()
+              .name("version").value(1)
+              .name("sha256Hash").value(operation.operationId())
+              .endObject();
+    }
     jsonWriter.endObject();
     jsonWriter.close();
     urlBuilder.addQueryParameter("extensions", buffer.readUtf8());

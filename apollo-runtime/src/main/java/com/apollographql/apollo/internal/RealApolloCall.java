@@ -381,7 +381,7 @@ public final class RealApolloCall<T> implements ApolloQueryCall<T>, ApolloMutati
     interceptors.add(new ApolloParseInterceptor(httpCache, apolloStore.networkResponseNormalizer(), responseFieldMapper,
         scalarTypeAdapters, logger));
     interceptors.add(new ApolloServerInterceptor(serverUrl, httpCallFactory, httpCachePolicy, false, scalarTypeAdapters,
-        logger, useHttpGetMethodForQueries));
+        logger, useHttpGetMethodForQueries, enableAutoPersistedQueries));
 
     return new RealApolloInterceptorChain(interceptors);
   }
