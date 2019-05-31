@@ -49,7 +49,7 @@ subprojects {
     checkstyle {
       configFile rootProject.file('checkstyle.xml')
       configProperties = ['checkstyle.cache.file': rootProject.file('build/checkstyle.cache')]
-      ignoreFailures false
+      ignoreFailures true
       showViolations true
     }
 
